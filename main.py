@@ -2,8 +2,29 @@ import requests
 from pprint import pprint
 import json
 
-dict_photo_like = []
-def get_photo (id):
+def users_info(id): #получаем информацию о пользователе
+    with open('vk_token.txt', 'r') as f:
+        token = f.read().strip()
+    # id = 69717407
+    URL = 'https://api.vk.com/method/users.get'
+    params = {
+        'user_ids': id,
+        'access_token': token, # токен и версия api являются обязательными параметрами во всех запросах к vk
+        'v':'5.131',
+        'fields': 'education,sex'
+    }
+    res = requests.get(URL, params=params).json()
+    info = res['response']
+    # dict_name_user = {}
+    for info in res['response']:
+        dict_name_user1 = {'first_name': info['first_name'], 'last_name': info['last_name'], 'id': info['id']}
+        # dict_name_user.append(dict_name_user1)
+    print(f'Информация о пользоваетеле {dict_name_user1["first_name"]} {dict_name_user1["last_name"]} получена')
+    return get_photo (dict_name_user1["id"])
+
+def get_photo (id): #Получение информации о фото пользователя
+    dict_photo_like = []
+    count = int(input('Скольео фотограй вы хотите скачать: '))
     with open('vk_token.txt', 'r') as f:
         vk_token = f.read().strip()
     photo_url = 'https://api.vk.com/method/photos.get'
@@ -15,10 +36,9 @@ def get_photo (id):
         'rev': 0,
         'extended': 1,
         'photo_sizes': 1,
-        'count': 10
+        'count': count
     }
     res = requests.get(photo_url, params=photo_params).json()
-    print(f'Информация о пользователе {id} получена')
 
     for item in res['response']['items']:
         for items in item['sizes']:
@@ -27,9 +47,11 @@ def get_photo (id):
                 dict_photo_like.append(dict_photo_like1)
     with open('dict_photo_like.json', 'w') as outfile:
         json.dump(dict_photo_like, outfile)
-    # pprint(dict_photo_like)
-    create_directory(id)
-
+    pprint(dict_photo_like)
+    return create_directory(input('Введите название директории в Яндекс Диске, в которую будет закачен файл: '))
+#     # pprint(dict_photo_like)
+#     # create_directory(id)
+#
 def create_directory(name_dir):
     with open('ya_token.txt', 'r') as file:
         yandex_token = file.read().strip()
@@ -47,35 +69,40 @@ def create_directory(name_dir):
         print(f"Такой каталог '{name_dir}' уже создан")
     else:
         print(f"Error {rez.status_code}")
-    upload_file(name_dir)
-
+    return upload_file(name_dir)
+#
 def upload_file(dir_disk):
     with open('ya_token.txt', 'r') as file:
         yandex_token = file.read().strip()
-    yandex_url = "https://cloud-api.yandex.net/v1/disk/resources"
+    yandex_url = "https://cloud-api.yandex.net/v1/disk/resources/upload"
     yandex_headers = {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        # 'Accept': 'application/json',
         'Authorization': f'OAuth {yandex_token}'}
+
+    with open("dict_photo_like.json", "r", encoding='utf-8') as read_file:
+        dict_photo_like = json.load(read_file)
 
     for d in dict_photo_like:
         file_name = d['file_name']
         link = d['link']
-        info = requests.post(f"{yandex_url}/upload/?path={dir_disk}/{file_name}.jpg&url={link}", headers=yandex_headers)
-        # pprint(info.json())
+        params = {"path": f'{dir_disk}/{file_name}', "url": link, "overwrite": "true"}
+        response = requests.post(yandex_url, params=params, headers=yandex_headers, )
 
-        if info.status_code == 201:
+        if response.status_code == 201:
             print(f"Файл '{file_name}' создан")
-        elif info.status_code == 202:
+        elif response.status_code == 202:
             print(f"Файл '{file_name}' записан повторно")
         else:
-            print(f"Error {info.status_code}")
+            print(f"Error {response.status_code}")
 
 
 if __name__ == '__main__':
-    get_photo('33125771')
+    pprint(users_info(input('Введите ID пользователя Вконтакте: ')))
 
-
-
+# 69717407
+# 34044962
+# 667783273
+# 265526713
 
 
